@@ -1,0 +1,23 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "users": {
+      "$uid": {
+        ".read": "auth.uid === $uid",
+        ".write": "auth.uid === $uid"
+      }
+    },
+    "projects": {
+      "$project_id": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "voters": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
+

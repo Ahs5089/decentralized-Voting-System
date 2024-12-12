@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pakistani Voting System Using Blockchain</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('../5_VotingSystem/1.jpg');
+            background-size: cover;
+            background-position: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            max-width: 500px;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.8); /* Change the alpha value to adjust transparency */
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0/1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        p {
+            margin-top: 20px;
+            color: #555;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        #buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .button-85 {
+  padding: 0.6em 2em;
+  border: none;
+  outline: none;
+  color: rgb(255, 255, 255);
+  background: #111;
+  cursor: pointer;
+  position: relative;
+  z-index: 0;
+  border-radius: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.button-85:before {
+  content: "";
+  background: linear-gradient(
+    45deg,
+    #ff0000,
+    #ff7300,
+    #fffb00,
+    #48ff00,
+    #00ffd5,
+    #002bff,
+    #7a00ff,
+    #ff00c8,
+    #ff0000
+  );
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  background-size: 400%;
+  z-index: -1;
+  filter: blur(5px);
+  -webkit-filter: blur(5px);
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  animation: glowing-button-85 20s linear infinite;
+  transition: opacity 0.3s ease-in-out;
+  border-radius: 10px;
+}
+
+@keyframes glowing-button-85 {
+  0% {
+    background-position: 0 0;
+  }
+  50% {
+    background-position: 400% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+.button-85:after {
+  z-index: -1;
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #222;
+  left: 0;
+  top: 0;
+  border-radius: 10px;
+}
+
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+
+        .success {
+            color: green;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pakistani Voting System Using Blockchain</h1>
+        <p>Enter your Ethereum address:</p>
+        <input type="text" placeholder="Enter your Ethereum address" id="address">
+        <p>Enter your CNIC:</p>
+        <input type="text" placeholder="Enter your CNIC without dashes" id="CNIC" maxlength="13">
+        <span id="cnicError" class="error"></span>
+        <p>Choose your Party:</p>
+        <section id="buttons">
+            <button class="button-85" onclick="vote('PTI')">PTI</button>
+            <button class="button-85" onclick="vote('PPP')">PPP</button>
+            <button class="button-85" onclick="vote('PMLN')">PMLN</button>
+            <button class="button-85" onclick="vote('MQM')">MQM</button>
+            <button class="button-85" onclick="vote('PMLQ')">PMLQ</button>
+        </section>
+        <span id="voteResult" class="success"></span>
+        <h2>Vote History</h2>
+        <ul id="voteHistory"></ul>
+        <!-- <h2>Vote Counts</h2> -->
+        <ul id="voteCounts"></ul>
+    </div>  
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.4/firebase-database-compat.js"></script>
+    <script>
+
+     const firebaseConfig = {
+    apiKey: "AIzaSyC3V6DHBaO_LSIMhmbSt0KUvOG1MziOLXo",
+    authDomain: "voting-e68ac.firebaseapp.com",
+    databaseURL: "https://voting-e68ac-default-rtdb.firebaseio.com",
+    projectId: "voting-e68ac",
+    storageBucket: "voting-e68ac.appspot.com",
+    messagingSenderId: "188943050325",
+    appId: "1:188943050325:web:59c4c4c050a766818ad6dc",
+    measurementId: "G-LN63170XLD"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+
+// Initialize Realtime Database
+  const database = firebase.database();
+  
+          const contractAddress = '0x444fe2Cd3ed21B9B8442D1AaFDFDDbbc092cb346';
+          const abi = [
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "voterName",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "voterAddress",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "candidateName",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          }
+        ],
+        "name": "VoteCast",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "voter",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "candidate",
+            "type": "bytes32"
+          }
+        ],
+        "name": "Voted",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "",
+            "type": "string"
+          }
+        ],
+        "name": "cnicVoted",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "hasVoted",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "isEligible",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "name": "votesReceived",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "_voter",
+            "type": "address"
+          }
+        ],
+        "name": "registerVoter",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "_candidate",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "_voterName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "_candidateName",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "_cnic",
+            "type": "string"
+          }
+        ],
+        "name": "vote",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "_candidate",
+            "type": "bytes32"
+          }
+        ],
+        "name": "getVoteCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      }
+    ];
+          let web3;
+          let contract;
+  window.onload = async function() {
+      if (typeof web3 !== 'undefined') {
+          web3 = new Web3(web3.currentProvider);
+      } else {
+          web3 = new Web3(new Web3.providers.HttpProvider('HTTP://127.0.0.1:7545')); // Update with your RPC provider
+      }
+  
+      try {
+          contract = new web3.eth.Contract(abi, contractAddress);
+          // await displayVoteCounts();
+      } catch (error) {
+          console.error('Error initializing contract:', error);
+      }
+  }
+  // Function to handle voting
+async function vote(candidate) {
+    const address = document.getElementById('address').value;
+    const cnic = document.getElementById('CNIC').value;
+    const cnicError = document.getElementById('cnicError');
+    const voteResult = document.getElementById('voteResult');
+
+    // Validating CNIC
+    if (!cnic || isNaN(cnic) || cnic.length !== 13) {
+        cnicError.textContent = 'Please enter a valid CNIC with 14 digits.';
+        return;
+    } else {
+        cnicError.textContent = '';
+    }
+
+    try {
+        // Casting vote
+        await contract.methods.vote(
+            web3.utils.utf8ToHex(candidate), 
+            web3.utils.utf8ToHex(address), 
+            web3.utils.utf8ToHex(candidate),  // Make sure to pass the correct parameter
+            web3.utils.utf8ToHex(cnic)
+        ).send({from: address});
+
+        // Storing vote in Firebase Realtime Database
+        await storeVoteInFirebase(address, cnic, candidate);
+
+        alert('Vote casted successfully!');
+        voteResult.textContent = 'Vote successfully casted!';
+
+        // Clearing vote result message after 3 seconds
+        setTimeout(() => {
+            voteResult.textContent = '';
+        }, 3000);
+    } catch (error) {
+        voteResult.textContent = 'Error casting vote: ' + error.message;
+    }
+}
+
+// Function to store vote in Firebase Realtime Database
+async function storeVoteInFirebase(address, cnic, candidate) {
+    try {
+        await database.ref('votes').push({
+            address: address,
+            cnic: cnic,
+            candidate: candidate
+        });
+    } catch (error) {
+        console.error('Error storing vote in Firebase:', error);
+    }
+}
+
+ // Function to store and display vote history
+ async function storeAndDisplayVoteHistory(address, cnic, candidate) {
+  const voteHistory = document.getElementById('voteHistory');
+  const listItem = document.createElement('li');
+  listItem.textContent = `Voter Address: ${address}, CNIC: ${cnic}, Vote for: ${candidate};`
+  voteHistory.appendChild(listItem);
+      }
+    </script>
+</body>
+</html>
